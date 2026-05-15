@@ -60,6 +60,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Mantener alineado con lab/cyberstrikeai/config.yaml (security.tools_dir => /app/tools).
 # Si una herramienta no está aquí, el tool registrado en /app/tools/*.yaml fallará
 # con "tool not found" porque el binario invoca el comando real del sistema.
+#
+# Se divide en tres capas para que el build sea reproducible en amd64 y arm64:
+#   1) base (utilidades de sistema)
+#   2) toolkit estable (presente en bookworm main)
+#   3) nikto (vive en non-free) + opcionales best-effort
+# nikto, enum4linux y feroxbuster no están en `main`; los manejamos aparte
+# para que un mirror sin non-free o una arch sin paquete no rompa el build.
+
+# Capa 1: base mínima.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         ca-certificates curl wget git tini jq \
@@ -67,23 +76,43 @@ RUN apt-get update \
         iputils-ping iproute2 iputils-tracepath \
         netcat-openbsd dnsutils whois \
         openssh-client sshpass \
-        nmap masscan ncat \
-        hydra nikto wfuzz \
-        gobuster ffuf feroxbuster \
-        sqlmap whatweb wafw00f \
-        smbclient nbtscan \
-        dnsenum dnsrecon \
-        enum4linux \
-        john hashcat \
-        binwalk exiftool \
         libsqlite3-0 libc6 \
  && rm -rf /var/lib/apt/lists/*
 
-# Tools que no están en Debian (o cuyo paquete tiene otro nombre) — los
-# instalamos vía pip para evitar romper la imagen si Debian los retira.
-# smbmap, dirsearch y subfinder son los más usados por los módulos del lab.
+# Capa 2: toolkit ofensivo principal (todo en bookworm/main para amd64 y arm64).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        nmap masscan ncat \
+        hydra wfuzz \
+        gobuster ffuf \
+        sqlmap whatweb wafw00f \
+        smbclient nbtscan \
+        dnsenum dnsrecon \
+        john hashcat \
+        binwalk exiftool \
+ && rm -rf /var/lib/apt/lists/*
+
+# Capa 3: opcionales. Habilitamos `non-free` para conseguir `nikto` y
+# probamos `feroxbuster`/`enum4linux` por si el mirror los tiene. Cualquier
+# fallo aquí NO rompe el build: ffuf/gobuster cubren feroxbuster y
+# enum4linux-ng (pip) cubre enum4linux.
+RUN set -eux; \
+    echo 'deb http://deb.debian.org/debian bookworm main contrib non-free' \
+        > /etc/apt/sources.list.d/non-free.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends nikto || \
+        echo '[warn] nikto no se instaló (mirror sin non-free) — se podrá ejecutar igual desde Attacker-PC'; \
+    apt-get install -y --no-install-recommends feroxbuster || \
+        echo '[info] feroxbuster no disponible en esta arch — usar ffuf/gobuster'; \
+    apt-get install -y --no-install-recommends enum4linux || \
+        echo '[info] enum4linux no disponible — se usa enum4linux-ng (pip) en su lugar'; \
+    rm -rf /var/lib/apt/lists/*
+
+# Tools que no están en Debian o son más útiles vía PyPI. enum4linux-ng es el
+# reemplazo moderno de enum4linux; smbmap, dirsearch e impacket son
+# habituales en los módulos del laboratorio.
 RUN pip3 install --no-cache-dir --break-system-packages \
-        smbmap dirsearch impacket || \
+        enum4linux-ng smbmap dirsearch impacket || \
     echo '[warn] alguna tool Python no se instaló — se podrá ejecutar igual desde Attacker-PC'
 
 WORKDIR /app
