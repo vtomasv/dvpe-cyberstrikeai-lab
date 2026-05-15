@@ -9,10 +9,13 @@
 # =============================================================================
 
 # ---------- builder ----------
-FROM golang:1.22-bookworm AS builder
+# El upstream Ed1s0nZ/CyberStrikeAI requiere Go >= 1.24 (toolchain go1.24.4).
+FROM golang:1.24-bookworm AS builder
 
 ARG CYBERSTRIKEAI_REPO=https://github.com/Ed1s0nZ/CyberStrikeAI.git
-ARG CYBERSTRIKEAI_REF=main
+# Tag por defecto fijado para reproducibilidad. Para usar la rama main:
+#   docker compose build --build-arg CYBERSTRIKEAI_REF=main cyberstrikeai
+ARG CYBERSTRIKEAI_REF=v1.6.13
 
 WORKDIR /src
 RUN apt-get update \

@@ -203,7 +203,7 @@ services:
     build:
       context: ./lab/cyberstrikeai
       args:
-        CYBERSTRIKEAI_REF: "${CYBERSTRIKEAI_REF:-main}"
+        CYBERSTRIKEAI_REF: "${CYBERSTRIKEAI_REF:-v1.6.13}"
     image: dvpe-lab/cyberstrikeai:local
     container_name: CyberStrikeAI
     hostname: cyberstrikeai
