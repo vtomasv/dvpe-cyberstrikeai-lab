@@ -31,6 +31,16 @@ RUN git clone --depth 1 --branch "${CYBERSTRIKEAI_REF}" "${CYBERSTRIKEAI_REPO}" 
 
 WORKDIR /src/CyberStrikeAI
 
+# i18n: el upstream usa 'zh-CN' como DEFAULT_LANG y, salvo que el navegador
+# del alumno reporte 'en*', cae siempre en chino. Para el laboratorio dejamos
+# 'en-US' como default; el switcher EN/中文 sigue disponible y la elección se
+# guarda en localStorage (csai_lang).
+RUN sed -i "s/const DEFAULT_LANG = 'zh-CN';/const DEFAULT_LANG = 'en-US';/" \
+        web/static/js/i18n.js \
+ && sed -i "s/return 'zh-CN';/return 'en-US';/" \
+        web/static/js/i18n.js \
+ && grep -n 'DEFAULT_LANG' web/static/js/i18n.js | head -5
+
 ENV GOPROXY=https://proxy.golang.org,direct \
     CGO_ENABLED=1
 
