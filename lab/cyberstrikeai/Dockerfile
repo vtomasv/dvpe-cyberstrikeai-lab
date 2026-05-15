@@ -92,13 +92,26 @@ RUN apt-get update \
         binwalk exiftool \
  && rm -rf /var/lib/apt/lists/*
 
-# Capa 3: opcionales. Habilitamos `non-free` para conseguir `nikto` y
-# probamos `feroxbuster`/`enum4linux` por si el mirror los tiene. Cualquier
-# fallo aquí NO rompe el build: ffuf/gobuster cubren feroxbuster y
-# enum4linux-ng (pip) cubre enum4linux.
+# Capa 3: opcionales. Habilitamos `contrib non-free non-free-firmware` para
+# poder instalar `nikto` (vive en non-free) y probamos `feroxbuster`/
+# `enum4linux` por si el mirror los tiene. Cualquier fallo aquí NO rompe el
+# build: ffuf/gobuster cubren feroxbuster y enum4linux-ng (pip) cubre
+# enum4linux.
+#
+# Importante: bookworm-slim trae las fuentes firmadas (Signed-By apuntando
+# a /usr/share/keyrings/debian-archive-keyring.gpg). Si simplemente
+# añadimos otro fichero `deb http://...` sin la misma firma, apt-get update
+# aborta con "Conflicting values set for option Signed-By". Por eso editamos
+# in-place las fuentes existentes (formato clásico o deb822) en lugar de
+# crear una entrada nueva.
 RUN set -eux; \
-    echo 'deb http://deb.debian.org/debian bookworm main contrib non-free' \
-        > /etc/apt/sources.list.d/non-free.list; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i 's/^Components: .*/Components: main contrib non-free non-free-firmware/' \
+            /etc/apt/sources.list.d/debian.sources; \
+    elif [ -f /etc/apt/sources.list ]; then \
+        sed -i -E 's|^(deb(-src)? +http[^ ]+ +[^ ]+) +main([^\n]*)$|\1 main contrib non-free non-free-firmware|' \
+            /etc/apt/sources.list; \
+    fi; \
     apt-get update; \
     apt-get install -y --no-install-recommends nikto || \
         echo '[warn] nikto no se instaló (mirror sin non-free) — se podrá ejecutar igual desde Attacker-PC'; \
