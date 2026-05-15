@@ -227,7 +227,11 @@ services:
 
   lab-guide:
     build:
-      context: ./lab/lab-guide
+      # El contexto es la raíz del repo porque el Dockerfile compila la SPA
+      # (client/, server/, shared/, package.json, etc.) y luego la sirve con
+      # Nginx. Mantener el código fuente fuera de lab/lab-guide/ evita duplicarlo.
+      context: .
+      dockerfile: lab/lab-guide/Dockerfile
     image: dvpe-lab/lab-guide:local
     container_name: Lab-Guide
     hostname: lab-guide

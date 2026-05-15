@@ -1,0 +1,3 @@
+Archivo binario eliminado del sandbox webdev (limite 1MB).
+La versión real está en el repositorio público:
+https://github.com/vtomasv/dvpe-cyberstrikeai-lab/raw/main/lab/dvpe/configs/files/mailtrail.tar.gz
