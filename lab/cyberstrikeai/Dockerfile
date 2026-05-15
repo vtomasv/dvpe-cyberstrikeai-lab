@@ -136,6 +136,16 @@ COPY --from=builder /out/cyberstrike-ai             /app/cyberstrike-ai
 COPY --from=builder /src/CyberStrikeAI/agents       /app/agents
 COPY --from=builder /src/CyberStrikeAI/roles        /app/roles
 COPY --from=builder /src/CyberStrikeAI/skills       /app/skills
+
+# Overlay i18n/es: sobrescribe los .md/.yaml de agents, roles y skills con su
+# versión traducida al español. Mantenemos los IDs originales (id: en
+# agents/*.md, name: en skills/SKILL.md, name: en roles/*.yaml) para no
+# romper el despacho del orquestador ni la validación de Agent Skills.
+# Las traducciones están versionadas junto al repo del lab, no en el
+# upstream, para que un `git pull` aguas arriba no las elimine.
+COPY i18n/es/agents/ /app/agents/
+COPY i18n/es/roles/  /app/roles/
+COPY i18n/es/skills/ /app/skills/
 COPY --from=builder /src/CyberStrikeAI/tools        /app/tools
 COPY --from=builder /src/CyberStrikeAI/mcp-servers  /app/mcp-servers
 COPY --from=builder /src/CyberStrikeAI/plugins      /app/plugins

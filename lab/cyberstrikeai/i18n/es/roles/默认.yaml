@@ -1,0 +1,5 @@
+name: 默认
+description: Rol por defecto, no incluye prompts de usuario adicionales, utiliza el MCP por defecto
+user_prompt: ""
+icon: "🔵"
+enabled: true
