@@ -38,8 +38,10 @@ Sugerencia: dividir la clase en dos sesiones de 90 minutos. La primera cubre 00â
 
 **Spoilers (uso docente)**
 
-- Password root Attacker-PC: `toor`.
-- Password root Jerry-PC: `IAmJerry`.
+- Password noVNC del Attacker-PC (`http://localhost:6080`): `kali`.
+- Password root SSH del Attacker-PC (`ssh -p 2222 root@127.0.0.1`): `toor`.
+- Password de la consola CyberStrikeAI (`http://localhost:8090`): `lab-cyberstrike` (variable `CSAI_ACCESS_PASSWORD`).
+- Password root Jerry-PC (`ssh -p 2200 root@127.0.0.1`): `IAmJerry`.
 
 ---
 

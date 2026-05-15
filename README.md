@@ -74,8 +74,20 @@ Servicios principales una vez arriba:
 | `http://localhost:8088`                      | Guía web del alumno (esta página) |
 | `http://localhost:8090`                      | CyberStrikeAI (web). Password inicial: `lab-cyberstrike` |
 | `http://localhost:8091/mcp`                  | Endpoint MCP HTTP de CyberStrikeAI |
-| `http://localhost:6080`                      | Escritorio gráfico del Attacker-PC (noVNC) |
-| `ssh -p 2222 root@127.0.0.1`                 | Acceso shell al Attacker-PC (`root:toor`) |
+| `http://localhost:6080`                      | Escritorio gráfico del Attacker-PC (noVNC, password `kali`) |
+| `ssh -p 2222 root@127.0.0.1`                 | Acceso shell al Attacker-PC (usuario `root`, password `toor`) |
+
+### Credenciales por defecto del laboratorio
+
+| Servicio | Usuario | Password | Origen |
+|---|---|---|---|
+| Attacker-PC noVNC (`:6080`) | – | `kali` | `x11vnc -storepasswd kali` en `Dockerfile-Attacker-PC` |
+| Attacker-PC SSH (`:2222`) | `root` | `toor` | `chpasswd` en `Dockerfile-Attacker-PC` |
+| CyberStrikeAI (`:8090`) | – | `lab-cyberstrike` | `CSAI_ACCESS_PASSWORD` en `lab.env.example` |
+| Hosts internos DVPE (`Jerry`, `Beth`, `Rick`, etc.) | `root` | Ver `Dockerfile-*` correspondiente | Cada Dockerfile setea su propia password con `chpasswd` |
+
+> Estos valores son *intencionalmente débiles* para uso didáctico. **No expongas el laboratorio a Internet.**
+
 | `ssh -p 2200 root@127.0.0.1`                 | Acceso shell a Jerry-PC (`root:IAmJerry`) |
 | `http://localhost:8081`                      | Panel Maltrail expuesto desde Server51 |
 

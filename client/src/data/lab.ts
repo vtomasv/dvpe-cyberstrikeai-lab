@@ -155,8 +155,12 @@ export const MODULES: Module[] = [
           { as: "host", code: "ssh -p 2222 root@127.0.0.1    # Attacker-PC SSH" },
         ],
         spoiler: {
-          label: "Mostrar credencial inicial",
-          content: "Contraseña root del contenedor Attacker-PC: toor",
+          label: "Mostrar credenciales iniciales",
+          content: [
+            "noVNC (http://localhost:6080) → password VNC: kali",
+            "SSH (ssh -p 2222 root@127.0.0.1) → root: toor",
+            "CyberStrikeAI (http://localhost:8090) → password: lab-cyberstrike (CSAI_ACCESS_PASSWORD)",
+          ].join("\n"),
         },
       },
     ],

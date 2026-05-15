@@ -38,6 +38,8 @@ Si esa salida está vacía:
 
 ## 5. No puedo conectarme al Attacker-PC por noVNC
 
+- La contraseña del cliente VNC/noVNC del Attacker-PC es `kali` (no `toor`). `toor` es la contraseña de **root para SSH** (`ssh -p 2222 root@127.0.0.1`); el VNC usa una credencial separada que el upstream fija con `x11vnc -storepasswd kali` en `Dockerfile-Attacker-PC`.
+- Si quieres cambiarla, edita `lab/dvpe/configs/Dockerfile-Attacker-PC` y reemplaza `kali` por tu password en la línea `RUN mkdir -p ~/.vnc && x11vnc -storepasswd kali ~/.vnc/passwd`, luego rebuild: `docker compose build --no-cache attacker_pc && docker compose up -d --force-recreate attacker_pc`.
 - Comprueba que el contenedor está vivo: `docker ps | grep Attacker-PC`.
 - Reinicia su entrypoint: `docker restart Attacker-PC`.
 - En Docker Desktop con perfiles de seguridad estrictos puede ser necesario habilitar el dispositivo TUN: edita `docker-compose.yml` y comenta la línea `- "/dev/net/tun:/dev/net/tun"` si Docker Desktop bloquea la inyección.
