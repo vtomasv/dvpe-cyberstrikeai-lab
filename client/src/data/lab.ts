@@ -1,6 +1,8 @@
 /**
  * Dataset central del laboratorio.
- * Cada módulo se renderiza como una sección con checklist persistente.
+ * Cada módulo ahora tiene dos vistas:
+ *   - `steps`     : recorrido manual paso a paso (lo que el alumno hace en Attacker-PC).
+ *   - `csai`      : misma misión replicada con CyberStrikeAI + Ollama local.
  * Los `spoiler` están ocultos detrás de un botón y muestran flags, credenciales
  * o soluciones para uso docente.
  */
@@ -26,6 +28,25 @@ export type Step = {
   spoiler?: { label: string; content: string };
 };
 
+export type CSAIBlock = {
+  id: string;
+  title: string;
+  description: string;
+  /** Prompt listo para pegar en CyberStrikeAI. */
+  prompt: string;
+  /** Comprobación esperada (qué debería responder o qué herramientas debería invocar). */
+  expect: string;
+  hint?: string;
+};
+
+export type CSAIWorkflow = {
+  /** Setup previo: rol, modelo y conexión recomendada. */
+  role: string;
+  model: string;
+  /** Bloques que el alumno ejecuta dentro de la consola CSAI. */
+  blocks: CSAIBlock[];
+};
+
 export type Module = {
   id: string;
   number: string;
@@ -35,6 +56,7 @@ export type Module = {
   estMin: number;
   goals: string[];
   steps: Step[];
+  csai?: CSAIWorkflow;
 };
 
 export const NETWORKS: Network[] = [
@@ -100,6 +122,10 @@ export const NETWORKS: Network[] = [
   },
 ];
 
+const HITL_REMINDER =
+  "Recordá: el laboratorio mantiene la aprobación humana (HITL) activada. " +
+  "El agente debe proponer comandos y vos confirmás antes de ejecutar.";
+
 export const MODULES: Module[] = [
   {
     id: "m0",
@@ -164,6 +190,27 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Asistente DevOps / SRE",
+      model: "llama3.1:8b",
+      blocks: [
+        {
+          id: "m0-csai-1",
+          title: "Verificación inicial del entorno",
+          description:
+            "Pedile al agente que valide qué servicios están arriba y qué puertos están publicados.",
+          prompt:
+            "Soy operador del laboratorio educativo DVPE × CyberStrikeAI. Verificá si los siguientes endpoints responden y dame un diagnóstico breve:\n" +
+            "- http://lab-guide:80 (guía interna)\n" +
+            "- http://ollama-proxy:11434/api/tags (modelos Ollama disponibles)\n" +
+            "- http://CyberStrikeAI:8080/health (mi propia salud)\n" +
+            "Listá modelos disponibles y avisame si llama3.1:8b no está cargado.",
+          expect:
+            "El agente debería invocar herramientas HTTP/curl, devolver un resumen tabular de los tres endpoints y nombrar los modelos que reportó Ollama.",
+          hint: HITL_REMINDER,
+        },
+      ],
+    },
   },
   {
     id: "m1",
@@ -203,10 +250,39 @@ export const MODULES: Module[] = [
         ],
         spoiler: {
           label: "Hosts esperados en network_a",
-          content: "192.168.10.2 Attacker-PC · 192.168.10.3 Jerry-PC · 192.168.10.10 CyberStrikeAI · 192.168.10.20 Lab-Guide · 192.168.10.30 ollama-proxy",
+          content:
+            "192.168.10.2 Attacker-PC · 192.168.10.3 Jerry-PC · 192.168.10.10 CyberStrikeAI · 192.168.10.20 Lab-Guide · 192.168.10.30 ollama-proxy",
         },
       },
     ],
+    csai: {
+      role: "Recon Specialist",
+      model: "llama3.1:8b",
+      blocks: [
+        {
+          id: "m1-csai-1",
+          title: "Pedir reconocimiento de network_a",
+          description:
+            "El agente puede invocar nmap/ping y devolver una tabla de hosts vivos. Aprobá cada comando antes de ejecutar.",
+          prompt:
+            "Estoy conectado a la red 192.168.10.0/24 desde el host atacante. Quiero un inventario de hosts vivos con tres columnas: IP, hostname (si lo deduces) y puertos TCP top-10 abiertos. " +
+            "Proponé los comandos en bloque markdown y esperá mi aprobación. No ejecutes nada todavía.",
+          expect:
+            "El agente debería proponer un nmap -sn y luego un nmap -sT --top-ports=10 contra los vivos. Debe esperar aprobación humana.",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m1-csai-2",
+          title: "Comparar con tu ping sweep manual",
+          description:
+            "Pegale al agente la salida de tu ping sweep manual y pedile contraste con su escaneo.",
+          prompt:
+            "Esta es la salida de mi ping sweep manual:\n```\n<<pega aquí la salida>>\n```\nComparalo con tu inventario y marcá los hosts que ambos confirman versus los que sólo aparece en uno.",
+          expect:
+            "El agente debe devolver una tabla con tres columnas: IP, visto-manual, visto-CSAI; resaltando coincidencias y discrepancias.",
+        },
+      ],
+    },
   },
   {
     id: "m2",
@@ -243,6 +319,33 @@ export const MODULES: Module[] = [
         ],
       },
     ],
+    csai: {
+      role: "Initial Access Operator",
+      model: "llama3.1:8b",
+      blocks: [
+        {
+          id: "m2-csai-1",
+          title: "Enumerar posibles credenciales",
+          description:
+            "Pedile al agente que arme una lista corta y razonada de pares usuario:contraseña que probarías primero.",
+          prompt:
+            "Tengo un host con SSH abierto en 192.168.10.3 (hostname Jerry-PC). En contexto educativo y autorizado, proponé 8 pares usuario:contraseña a probar primero, ordenados por probabilidad y justificando cada uno en una línea.",
+          expect:
+            "El agente debe devolver una lista numerada con justificaciones cortas y proponer un único intento manual para iniciar (no automatizar).",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m2-csai-2",
+          title: "Generar plan de despliegue del toolkit",
+          description:
+            "Que sugiera la mejor manera de copiar y descomprimir tu toolkit minimizando huella.",
+          prompt:
+            "Acabo de comprometer Jerry-PC (192.168.10.3) con credenciales válidas. Tengo en mi atacante /root/toolkit.tar.gz (chisel, linpeas, ffuf). Proponé los comandos para copiarlo, verificar hash y descomprimirlo en /root/ minimizando logs.",
+          expect:
+            "El agente debe sugerir scp + sha256sum + tar y, opcionalmente, limpieza de history.",
+        },
+      ],
+    },
   },
   {
     id: "m3",
@@ -287,6 +390,33 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Pivoting Specialist",
+      model: "qwen2.5-coder:7b",
+      blocks: [
+        {
+          id: "m3-csai-1",
+          title: "Diseñar el túnel y validarlo",
+          description:
+            "Que el agente te explique paso a paso cómo armar el reverse SOCKS y cómo validarlo desde el atacante.",
+          prompt:
+            "Quiero pivotar desde Jerry-PC (192.168.10.3, mi pivote) hacia 192.168.11.0/24. Tengo el binario chisel. Proponé: (1) comando exacto en el atacante para escuchar reverse SOCKS, (2) comando exacto en Jerry-PC, (3) prueba de validación con proxychains contra 192.168.11.3.",
+          expect:
+            "El agente debe entregar tres bloques de comandos diferenciados (atacante / Jerry / verificación) y enumerar las opciones críticas de chisel.",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m3-csai-2",
+          title: "Pedir un escaneo asistido vía SOCKS",
+          description:
+            "El agente puede orquestar nmap a través del SOCKS y devolverte un resumen.",
+          prompt:
+            "Con el SOCKS5 activo en 127.0.0.1:1080, ejecutá un escaneo top-50 puertos TCP contra 192.168.11.3 usando proxychains y devolveme: puertos abiertos, banners y tres rutas de explotación priorizadas.",
+          expect:
+            "El agente debe invocar proxychains nmap, parsear la salida y devolver tabla + plan en máx. 5 bullets.",
+        },
+      ],
+    },
   },
   {
     id: "m4",
@@ -322,6 +452,32 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Web Enumerator",
+      model: "qwen2.5-coder:7b",
+      blocks: [
+        {
+          id: "m4-csai-1",
+          title: "Plan de enumeración web",
+          description:
+            "Pedile al agente un plan de enumeración con al menos dos motores (ffuf y feroxbuster) y wordlists razonadas.",
+          prompt:
+            "Tengo HTTP en 192.168.11.3 y SOCKS5 en 127.0.0.1:1080. Plan de enumeración web en 4 pasos: detección de tecnología, fuzzing de rutas, fuzzing de parámetros y prueba de virtual hosts. Especificá wordlists y por qué.",
+          expect:
+            "Plan enumerado, wordlists sensatas, sin sugerir ataques destructivos. Debe esperar aprobación.",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m4-csai-2",
+          title: "Interpretar la salida de ffuf",
+          description:
+            "Pegale los resultados crudos y pedí ranking de rutas a auditar primero.",
+          prompt:
+            "Estos son los hits de ffuf:\n```\n<<pega salida>>\n```\nDame las 5 rutas más interesantes ordenadas por riesgo y la prueba manual mínima para cada una.",
+          expect: "Tabla con ruta, código HTTP, motivo, prueba siguiente.",
+        },
+      ],
+    },
   },
   {
     id: "m5",
@@ -364,6 +520,32 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Exploitation Engineer",
+      model: "qwen2.5-coder:7b",
+      blocks: [
+        {
+          id: "m5-csai-1",
+          title: "Generar payload de reverse shell",
+          description:
+            "El agente arma un oneliner Python que apunte a Jerry-PC, lo justifica y propone alternativas.",
+          prompt:
+            "Necesito un reverse shell desde 192.168.11.3 hacia 192.168.11.2:4041 usando Python 3 (sin dependencias adicionales). Devolveme: oneliner principal, alternativa con bash, alternativa con socat. Explicá cuándo elegir cada uno.",
+          expect:
+            "Tres bloques de código, comentarios cortos en cada uno y advertencia sobre detección/IOCs.",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m5-csai-2",
+          title: "Estabilizar la shell",
+          description:
+            "Pedile al agente la secuencia clásica de upgrade de TTY y verificación.",
+          prompt:
+            "Tengo una shell reverse interactiva pero sin TTY completa. Dame los pasos exactos para upgrade (python pty, stty, export TERM) y la verificación final.",
+          expect: "Lista de 4-5 comandos en orden y comprobación con `tput cols`.",
+        },
+      ],
+    },
   },
   {
     id: "m6",
@@ -400,6 +582,23 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Privilege Escalation Analyst",
+      model: "deepseek-r1:7b",
+      blocks: [
+        {
+          id: "m6-csai-1",
+          title: "Triage automatizado de LinPEAS",
+          description:
+            "Pegale al agente la salida de LinPEAS y pedí un triage priorizado.",
+          prompt:
+            "Esta es la salida resumida de LinPEAS:\n```\n<<pega la salida o un fragmento relevante>>\n```\nDevolveme las 5 vías de escalación más probables ordenadas por riesgo y por esfuerzo, y para la #1 dame el comando exacto de explotación.",
+          expect:
+            "Tabla con vector, riesgo, esfuerzo, comando-prueba. Marca explícita de qué es destructivo.",
+          hint: HITL_REMINDER,
+        },
+      ],
+    },
   },
   {
     id: "m7",
@@ -434,7 +633,7 @@ export const MODULES: Module[] = [
       {
         id: "m7-s3",
         title: "Prompt de planificación",
-        description: "En la consola crea una conversación nueva con el rol \"渗透测试\" / Pentesting y pega el siguiente prompt.",
+        description: "En la consola crea una conversación nueva con el rol \"Pentesting / Lateral Movement\" y pega el siguiente prompt.",
         commands: [
           {
             as: "csai",
@@ -444,6 +643,33 @@ export const MODULES: Module[] = [
         hint: "El laboratorio mantiene la aprobación humana activada en herramientas ofensivas (HITL). El agente debe proponer, no ejecutar directamente.",
       },
     ],
+    csai: {
+      role: "Lateral Movement Strategist",
+      model: "llama3.1:8b",
+      blocks: [
+        {
+          id: "m7-csai-1",
+          title: "Plan de salto Webserver → Summer-PC",
+          description:
+            "El agente arma el plan completo (descubrimiento, autenticación, persistencia opcional) usando el toolkit ya desplegado.",
+          prompt:
+            "Estoy en Webserver (192.168.11.3) como root. Quiero saltar a Summer-PC (192.168.12.3). Tengo /root/id_rsa_home. Plan en 4 pasos: validación de ruta, intento de auth, validación post-login, plan de salida. Incluí los comandos exactos.",
+          expect:
+            "Cuatro pasos numerados con comandos concretos y validación de éxito en cada uno.",
+          hint: HITL_REMINDER,
+        },
+        {
+          id: "m7-csai-2",
+          title: "Pedir un mini-informe de actividad",
+          description:
+            "Que CSAI documente lo que ya hiciste en formato listo para pegar en el informe final.",
+          prompt:
+            "Generá un mini-informe (máx 200 palabras) con: hosts comprometidos, técnicas MITRE ATT&CK relevantes, evidencias clave y pendientes de Blue Team. Tono ejecutivo, en español.",
+          expect:
+            "Texto corto en español con bullets y referencias MITRE (T-IDs).",
+        },
+      ],
+    },
   },
   {
     id: "m8",
@@ -489,6 +715,33 @@ export const MODULES: Module[] = [
         },
       },
     ],
+    csai: {
+      role: "Multi-Pivot Operator",
+      model: "qwen2.5-coder:7b",
+      blocks: [
+        {
+          id: "m8-csai-1",
+          title: "Diagrama mental del doble pivote",
+          description:
+            "Pedile al agente un diagrama ASCII del encadenamiento de túneles.",
+          prompt:
+            "Dibujá en ASCII el siguiente flujo: Attacker (192.168.10.2) ←socks5:1080— Jerry (192.168.10.3 / 192.168.11.2) ←ssh— Webserver (192.168.11.3 / 192.168.13.2) →ssh→ Server51 (192.168.13.3 / 192.168.14.2) ←socks5:1180— de vuelta al atacante. Explicá en una frase cada flecha.",
+          expect:
+            "ASCII art legible con etiquetas y leyenda corta.",
+        },
+        {
+          id: "m8-csai-2",
+          title: "Plan de salto a Rick-PC",
+          description:
+            "Que el agente proponga el camino más corto a 192.168.100.50 minimizando comandos.",
+          prompt:
+            "Estoy en Server51 con SOCKS5 hacia 192.168.14.0/24. Quiero llegar a Rick-PC (192.168.100.50). Proponé el camino más corto: cuántos saltos, qué túneles adicionales y qué credenciales reutilizar. Marcá los puntos donde necesitás mi confirmación.",
+          expect:
+            "Plan numerado con saltos, comandos por salto y checkpoints HITL claros.",
+          hint: HITL_REMINDER,
+        },
+      ],
+    },
   },
   {
     id: "m9",
@@ -536,6 +789,32 @@ export const MODULES: Module[] = [
         ],
       },
     ],
+    csai: {
+      role: "Blue Team Analyst",
+      model: "deepseek-r1:7b",
+      blocks: [
+        {
+          id: "m9-csai-1",
+          title: "Detectar IOCs del ejercicio",
+          description:
+            "Pegale los logs de Apache y la captura tcpdump y pedí extraer IOCs.",
+          prompt:
+            "Acá tenés evidencia recolectada del ejercicio (logs Apache + tcpdump):\n```\n<<pega evidencia>>\n```\nExtraé IOCs en formato tabla: tipo, valor, fuente, técnica MITRE.",
+          expect:
+            "Tabla CSV-friendly con al menos 6 IOCs (IPs, puertos, user-agents, hashes, comandos sospechosos).",
+        },
+        {
+          id: "m9-csai-2",
+          title: "Informe ejecutivo final",
+          description:
+            "Cierre del ejercicio con plan de remediación priorizado.",
+          prompt:
+            "Generá un informe ejecutivo en español (máx 350 palabras) con: resumen, cadena de ataque, top-5 hallazgos por riesgo, recomendaciones priorizadas (corto/medio/largo plazo). Tono CISO.",
+          expect:
+            "Texto formal en español, sin jerga innecesaria, con secciones claras.",
+        },
+      ],
+    },
   },
 ];
 
