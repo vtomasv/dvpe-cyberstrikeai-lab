@@ -18,8 +18,10 @@ ARG CYBERSTRIKEAI_REPO=https://github.com/Ed1s0nZ/CyberStrikeAI.git
 ARG CYBERSTRIKEAI_REF=v1.6.13
 
 WORKDIR /src
+# CGO requerido por github.com/mattn/go-sqlite3, usado por internal/database.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git ca-certificates \
+ && apt-get install -y --no-install-recommends \
+        git ca-certificates build-essential pkg-config libsqlite3-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # git clone --depth 1 --branch puede fallar si el ref es un commit; en ese caso
@@ -30,10 +32,12 @@ RUN git clone --depth 1 --branch "${CYBERSTRIKEAI_REF}" "${CYBERSTRIKEAI_REPO}" 
 WORKDIR /src/CyberStrikeAI
 
 ENV GOPROXY=https://proxy.golang.org,direct \
-    CGO_ENABLED=0
+    CGO_ENABLED=1
 
 RUN go mod download
-RUN go build -trimpath -ldflags "-s -w" -o /out/cyberstrike-ai ./cmd/server
+# go-sqlite3 necesita los tags estándar; mantenemos -ldflags '-s -w' para reducir tamaño.
+RUN go build -trimpath -tags "sqlite_omit_load_extension" -ldflags "-s -w" \
+        -o /out/cyberstrike-ai ./cmd/server
 
 # ---------- runtime ----------
 FROM debian:bookworm-slim AS runtime
@@ -48,6 +52,7 @@ RUN apt-get update \
         python3 python3-pip python3-venv \
         iputils-ping iproute2 netcat-openbsd dnsutils \
         nmap \
+        libsqlite3-0 libc6 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
