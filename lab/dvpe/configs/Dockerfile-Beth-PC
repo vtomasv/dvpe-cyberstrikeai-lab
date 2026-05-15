@@ -1,0 +1,45 @@
+# Usa la imagen base de Ubuntu
+FROM ubuntu:22.04
+
+# Actualiza el sistema e instala herramientas básicas
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    openssh-server \
+    git \
+    nano \
+    curl \
+    wget \
+    iputils-ping \
+    net-tools \
+    netcat \
+    nmap && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Configura el servicio SSH para permitir acceso remoto
+RUN mkdir /var/run/sshd
+RUN echo 'root:LRh3q__ub#-MXcte' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+RUN echo "flag{3d4f2bf07dc1be38b20cd6e46949a107}" >> /root/flag.txt
+
+# Copiar key publica
+WORKDIR /root/.ssh
+COPY files/id_rsa_home.pub authorized_keys
+
+# Dejar tools para pivoting
+RUN mkdir -p /root/Documents/tools
+WORKDIR /root/Documents/tools
+# El toolkit original NO se versiona en el repo del lab; se descarga del upstream.
+ARG DVPE_TOOLKIT_URL=https://github.com/franc205/dvpe/raw/main/configs/files/toolkit.tar.gz
+RUN curl -fL --retry 5 --retry-delay 2 -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
+ && tar -xzvf toolkit.tar.gz \
+ && rm toolkit.tar.gz
+
+
+# Exponer el puerto SSH
+EXPOSE 22
+
+# Comando predeterminado para iniciar SSH y Bash
+#CMD ["/usr/sbin/sshd", "-D"]
+CMD ["/bin/bash"]

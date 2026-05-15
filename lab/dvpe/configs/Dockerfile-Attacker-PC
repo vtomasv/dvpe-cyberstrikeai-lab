@@ -1,0 +1,72 @@
+# Usa la imagen base de Kali
+FROM kalilinux/kali-last-release:latest
+ENTRYPOINT ["/root/start-attacker.sh"]
+
+# Instalar Interfaz Grafica
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends \
+    #kali-desktop-xfce \
+    xfce4 \
+    xfce4-goodies \
+    dbus-x11 \
+    x11vnc \
+    xvfb \
+    xinit \
+    xorg \
+    sudo \
+    kmod \
+    iproute2 \
+    novnc && \
+    rm -rf /var/lib/apt/lists/*
+
+# Actualiza el sistema e instala herramientas básicas
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends \
+    openssh-server \
+    git \
+    nano \
+    curl \
+    wget \
+    gedit \
+    terminator \
+    tmux \
+    iputils-ping \
+    firefox-esr \
+    ffuf \
+    pip \
+    netcat-traditional \
+    net-tools \
+    proxychains \
+    crowbar \
+    nmap && \
+    rm -rf /var/lib/apt/lists/*
+
+# Configura el servicio SSH para permitir acceso remoto
+RUN mkdir -p /var/run/sshd
+RUN echo 'root:toor' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Configura VNC
+COPY files/start-attacker.sh /root/start.sh
+RUN chmod +x /root/start.sh
+RUN mkdir -p ~/.vnc && x11vnc -storepasswd kali ~/.vnc/passwd
+
+# Configurar Tools
+# El toolkit original (~55 MB) NO se versiona en este repo. Se descarga
+# durante la fase de build desde el upstream `franc205/dvpe`. Si necesitas
+# usar un mirror propio, sobreescribe DVPE_TOOLKIT_URL al construir.
+ARG DVPE_TOOLKIT_URL=https://github.com/franc205/dvpe/raw/main/configs/files/toolkit.tar.gz
+RUN mkdir -p /root/Desktop/tools
+WORKDIR /root/Desktop/tools
+RUN curl -fL --retry 5 --retry-delay 2 -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
+ && tar -xzvf toolkit.tar.gz \
+ && rm toolkit.tar.gz
+RUN wget https://raw.githubusercontent.com/3ndG4me/KaliLists/master/dirbuster/directory-list-2.3-medium.txt
+
+WORKDIR /root
+COPY files/Walkthrough_ES.desktop /root/Desktop/Walkthrough_ES.desktop
+COPY files/Walkthrough_EN.desktop /root/Desktop/Walkthrough_EN.desktop
+COPY files/terminator.config /root/.config/terminator/config
+
+# Comando predeterminado para iniciar SSH y Bash
+CMD ["/usr/sbin/sshd", "-D"]

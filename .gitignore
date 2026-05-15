@@ -1,0 +1,36 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+.cache/
+dist/
+build/
+
+# Logs y outputs
+*.log
+.manus-logs/
+client/public/__manus__/
+
+# Entorno
+.env
+.env.*
+!.env.example
+!lab.env.example
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.swp
+
+# Snapshots pesados que se descargan en build
+lab/dvpe/configs/files/toolkit.tar.gz
+
+# Editor
+.idea/
+.vscode/
+*.iml
+
+# Sandbox webdev artifacts
+.project-config.json
+.prettierrc
+.prettierignore
+template.json

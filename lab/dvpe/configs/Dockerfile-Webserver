@@ -1,0 +1,79 @@
+# Usa la imagen base de Ubuntu
+FROM ubuntu:22.04
+
+# Actualiza el sistema e instala herramientas básicas
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    openssh-server \
+    git \
+    nano \
+    curl \
+    wget \
+    iputils-ping \
+    net-tools \
+    netcat \
+    apache2 \
+    php8.1 \
+    python-is-python3 \
+    libapache2-mod-php \
+    php-xml \
+    php-mbstring \
+    php-json \
+    php-gd \
+    php-curl \
+    pip \
+    nmap && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Configura el servicio SSH para permitir acceso remoto
+RUN mkdir /var/run/sshd
+RUN echo 'root:D-iyPY5ttpzdPD79' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Configura un directorio de trabajo para tu contenido web
+WORKDIR /var/www/html
+#RUN GIT_SSL_NO_VERIFY=true git clone https://github.com/metinyesil/wp2fac.git/
+COPY files/wp2fac.tar.gz wp2fac.tar.gz 
+RUN mkdir -p admin && tar -xf wp2fac.tar.gz -C admin --strip-components=1 && \
+    rm wp2fac.tar.gz
+RUN cd admin
+RUN pip install pywhatkit
+
+# Configurar Wp2fac
+RUN sed -i '/include \x27db.php\x27;/d' /var/www/html/admin/send.php
+RUN sed -i '/$insert = $db->prepare("INSERT INTO sms SET pnumber=?, code=?");/,/$insert->execute(\[$whatsappNumber, $verificationCode\]);/d' /var/www/html/admin/send.php
+RUN sed -i 's#http://localhost/wp2fac/server/run.php#http://localhost/admin/server/run.php#' /var/www/html/admin/send.php
+
+
+# Habilita los módulos de Apache necesarios para PHP
+RUN a2enmod php8.1
+
+# Poner bit SUID para PrivEsc
+RUN chmod u+s /usr/bin/python3
+
+# Copiar keys
+WORKDIR /root/.ssh
+RUN echo "flag{098f6bcd4621d373cade4e832627b4f6}" >> /root/flag.txt
+COPY files/bash.bashrc /etc/bash.bashrc
+COPY files/id_rsa_home id_rsa_home
+COPY files/id_rsa_home.pub id_rsa_home.pub
+
+# Dejar tools para pivoting
+RUN mkdir -p /root/Documents/tools
+WORKDIR /root/Documents/tools
+# El toolkit original NO se versiona en el repo del lab; se descarga del upstream.
+ARG DVPE_TOOLKIT_URL=https://github.com/franc205/dvpe/raw/main/configs/files/toolkit.tar.gz
+RUN curl -fL --retry 5 --retry-delay 2 -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
+ && tar -xzvf toolkit.tar.gz \
+ && rm toolkit.tar.gz
+
+# Exponer el puerto SSH
+EXPOSE 22
+
+# Comando predeterminado para iniciar SSH y Bash
+#CMD ["/usr/sbin/sshd", "-D"]
+#CMD ["/bin/bash"]
+
+# Comando predeterminado para iniciar Apache
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]

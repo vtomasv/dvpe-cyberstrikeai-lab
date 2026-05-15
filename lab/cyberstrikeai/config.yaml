@@ -1,0 +1,64 @@
+# ============================================================================
+# CyberStrikeAI — configuración para dvpe-cyberstrikeai-lab
+# Adaptado para usar Ollama local (vía el contenedor `ollama-proxy`).
+# Documentación original: https://github.com/Ed1s0nZ/CyberStrikeAI
+# ============================================================================
+
+version: "lab-1.0"
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+auth:
+  # Cambiar este valor antes de exponer el laboratorio fuera del host.
+  password: "lab-cyberstrike"
+  session_duration_hours: 12
+
+log:
+  level: info
+  output: stdout
+
+# ---------------------------------------------------------------------------
+# Backend LLM: Ollama local expuesto como API compatible-OpenAI.
+# Los valores reales se inyectan al inicio desde variables de entorno:
+#   CSAI_OPENAI_BASE_URL / CSAI_OPENAI_API_KEY / CSAI_OPENAI_MODEL
+# (ver entrypoint.sh). El bloque siguiente sirve como respaldo si
+# alguien edita el archivo a mano.
+# ---------------------------------------------------------------------------
+openai:
+  provider: openai
+  base_url: http://ollama-proxy:11434/v1
+  api_key: "ollama"
+  model: "llama3.1:8b"
+  max_total_tokens: 16384
+  reasoning:
+    mode: off
+    effort: medium
+    allow_client_reasoning: true
+    profile: openai_compat
+
+agent:
+  max_iterations: 60
+  large_result_threshold: 102400
+  result_storage_dir: tmp
+  tool_timeout_minutes: 10
+
+hitl:
+  # Para uso docente exigimos aprobación humana antes de ejecutar herramientas
+  # ofensivas. Solo lecturas y búsquedas pasan sin pedir confirmación.
+  tool_whitelist: [read_file, list_dir, glob, grep]
+
+multi_agent:
+  enabled: true
+  robot_use_multi_agent: false
+  batch_use_multi_agent: false
+  max_iteration: 0
+  sub_agent_max_iterations: 40
+  without_general_sub_agent: false
+  without_write_todos: false
+
+mcp:
+  enabled: true
+  host: 0.0.0.0
+  port: 8081
