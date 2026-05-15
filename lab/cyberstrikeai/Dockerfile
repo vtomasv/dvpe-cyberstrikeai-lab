@@ -56,14 +56,35 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Toolkit de pentesting disponible para el agente.
+# Mantener alineado con lab/cyberstrikeai/config.yaml (security.tools_dir => /app/tools).
+# Si una herramienta no está aquí, el tool registrado en /app/tools/*.yaml fallará
+# con "tool not found" porque el binario invoca el comando real del sistema.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-        ca-certificates curl wget git tini \
+        ca-certificates curl wget git tini jq \
         python3 python3-pip python3-venv \
-        iputils-ping iproute2 netcat-openbsd dnsutils \
-        nmap \
+        iputils-ping iproute2 iputils-tracepath \
+        netcat-openbsd dnsutils whois \
+        openssh-client sshpass \
+        nmap masscan ncat \
+        hydra nikto wfuzz \
+        gobuster ffuf feroxbuster \
+        sqlmap whatweb wafw00f \
+        smbclient nbtscan \
+        dnsenum dnsrecon \
+        enum4linux \
+        john hashcat \
+        binwalk exiftool \
         libsqlite3-0 libc6 \
  && rm -rf /var/lib/apt/lists/*
+
+# Tools que no están en Debian (o cuyo paquete tiene otro nombre) — los
+# instalamos vía pip para evitar romper la imagen si Debian los retira.
+# smbmap, dirsearch y subfinder son los más usados por los módulos del lab.
+RUN pip3 install --no-cache-dir --break-system-packages \
+        smbmap dirsearch impacket || \
+    echo '[warn] alguna tool Python no se instaló — se podrá ejecutar igual desde Attacker-PC'
 
 WORKDIR /app
 
