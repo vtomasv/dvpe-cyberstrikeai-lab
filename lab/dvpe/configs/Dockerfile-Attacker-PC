@@ -58,9 +58,13 @@ RUN mkdir -p ~/.vnc && x11vnc -storepasswd kali ~/.vnc/passwd
 ARG DVPE_TOOLKIT_URL=https://github.com/franc205/dvpe/raw/main/configs/files/toolkit.tar.gz
 RUN mkdir -p /root/Desktop/tools
 WORKDIR /root/Desktop/tools
-RUN curl -fL --retry 5 --retry-delay 2 -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && update-ca-certificates \
+ && curl -fL --retry 5 --retry-delay 2 --cacert /etc/ssl/certs/ca-certificates.crt -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
  && tar -xzvf toolkit.tar.gz \
- && rm toolkit.tar.gz
+ && rm toolkit.tar.gz \
+ && rm -rf /var/lib/apt/lists/*
 RUN wget https://raw.githubusercontent.com/3ndG4me/KaliLists/master/dirbuster/directory-list-2.3-medium.txt
 
 WORKDIR /root

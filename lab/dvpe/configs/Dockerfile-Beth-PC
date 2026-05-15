@@ -32,9 +32,13 @@ RUN mkdir -p /root/Documents/tools
 WORKDIR /root/Documents/tools
 # El toolkit original NO se versiona en el repo del lab; se descarga del upstream.
 ARG DVPE_TOOLKIT_URL=https://github.com/franc205/dvpe/raw/main/configs/files/toolkit.tar.gz
-RUN curl -fL --retry 5 --retry-delay 2 -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && update-ca-certificates \
+ && curl -fL --retry 5 --retry-delay 2 --cacert /etc/ssl/certs/ca-certificates.crt -o toolkit.tar.gz "${DVPE_TOOLKIT_URL}" \
  && tar -xzvf toolkit.tar.gz \
- && rm toolkit.tar.gz
+ && rm toolkit.tar.gz \
+ && rm -rf /var/lib/apt/lists/*
 
 
 # Exponer el puerto SSH
