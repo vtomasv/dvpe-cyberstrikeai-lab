@@ -111,9 +111,10 @@ Estos valores son *intencionalmente débiles* para uso didáctico. **No expongas
 
 ## 4. Cómo se integra CyberStrikeAI con Ollama
 
-CyberStrikeAI usa una API compatible-OpenAI. En `lab/cyberstrikeai/config.yaml` se inyectan al iniciar tres variables:
+CyberStrikeAI usa una API compatible-OpenAI. En `lab/cyberstrikeai/config.yaml` se inyectan al iniciar estas variables:
 
 ```env
+CSAI_OPENAI_PROVIDER=openai
 CSAI_OPENAI_BASE_URL=http://ollama-proxy:11434/v1
 CSAI_OPENAI_API_KEY=ollama
 CSAI_OPENAI_MODEL=llama3.1:8b
@@ -123,6 +124,21 @@ El contenedor `ollama-proxy` es un simple `socat` (`TCP-LISTEN:11434 → TCP:hos
 
 ```bash
 docker compose restart cyberstrikeai
+```
+
+Tambien puede usar Gemini de Google mediante el endpoint OpenAI-compatible oficial:
+
+```env
+CSAI_OPENAI_PROVIDER=gemini
+CSAI_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+CSAI_OPENAI_API_KEY=<tu_gemini_api_key>
+CSAI_OPENAI_MODEL=gemini-2.5-flash
+```
+
+Despues de editar `.env`, recrea CyberStrikeAI para que tome las variables:
+
+```bash
+docker compose up -d --build --force-recreate cyberstrikeai
 ```
 
 Para validar el canal end-to-end, desde el propio contenedor:

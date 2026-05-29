@@ -24,8 +24,11 @@ log:
 
 # ---------------------------------------------------------------------------
 # Backend LLM: Ollama local expuesto como API compatible-OpenAI.
+# Tambien soporta Gemini usando el endpoint OpenAI-compatible de Google:
+#   provider: gemini
+#   base_url: https://generativelanguage.googleapis.com/v1beta/openai
 # Los valores reales se inyectan al inicio desde variables de entorno:
-#   CSAI_OPENAI_BASE_URL / CSAI_OPENAI_API_KEY / CSAI_OPENAI_MODEL
+#   CSAI_OPENAI_PROVIDER / CSAI_OPENAI_BASE_URL / CSAI_OPENAI_API_KEY / CSAI_OPENAI_MODEL
 # (ver entrypoint.sh). El bloque siguiente sirve como respaldo si
 # alguien edita el archivo a mano.
 # ---------------------------------------------------------------------------

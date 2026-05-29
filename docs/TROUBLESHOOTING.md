@@ -31,12 +31,46 @@ Si esa salida está vacía:
 - En Linux, comprueba que `extra_hosts: host.docker.internal:host-gateway` quedó aplicado (`docker inspect ollama-proxy | grep -i HostAliases`).
 - Si descargaste un modelo distinto, edita `CSAI_OPENAI_MODEL` en `.env` y reinicia: `docker compose restart cyberstrikeai`.
 
+## 3.1. CyberStrikeAI con Gemini devuelve error de autenticacion o URL
+
+Verifica que `.env` use el endpoint OpenAI-compatible de Google y una API key de Gemini valida:
+
+```env
+CSAI_OPENAI_PROVIDER=gemini
+CSAI_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+CSAI_OPENAI_API_KEY=<tu_gemini_api_key>
+CSAI_OPENAI_MODEL=gemini-2.5-flash
+```
+
+Luego recrea el contenedor:
+
+```bash
+docker compose up -d --build --force-recreate cyberstrikeai
+docker compose logs --tail=100 cyberstrikeai
+```
+
+Si aparece `Function call is missing a thought_signature`, estas usando un modelo Gemini 3.x en un flujo con herramientas. Mantén `gemini-2.5-flash` para los agentes con tools hasta que la capa OpenAI-compatible de Eino preserve `thought_signature`.
+
 ## 4. El modelo es muy lento
 
 - Cambia a un modelo más pequeño: `ollama pull llama3.1:8b-instruct-q4_K_M` y ajusta `CSAI_OPENAI_MODEL`.
 - Si tu GPU lo permite, prueba `qwen2.5-coder:7b` (mejor en código) o `deepseek-r1:7b` (reasoning extendido).
 
-## 5. No puedo conectarme al Attacker-PC por noVNC
+## 5. Una tool falla con `executable file not found in $PATH`
+
+CyberStrikeAI carga los tools desde `/app/tools/*.yaml`. Al iniciar, el contenedor deshabilita automaticamente cualquier tool cuyo ejecutable no exista en el `PATH`, para que el agente no intente usar binarios ausentes.
+
+Si necesitas una tool especifica:
+
+```bash
+docker compose build cyberstrikeai
+docker compose up -d --force-recreate cyberstrikeai
+docker exec CyberStrikeAI command -v paramspider
+```
+
+`paramspider` se instala en la imagen desde su repositorio oficial de GitHub.
+
+## 6. No puedo conectarme al Attacker-PC por noVNC
 
 - La contraseña del cliente VNC/noVNC del Attacker-PC es `kali` (no `toor`). `toor` es la contraseña de **root para SSH** (`ssh -p 2222 root@127.0.0.1`); el VNC usa una credencial separada que el upstream fija con `x11vnc -storepasswd kali` en `Dockerfile-Attacker-PC`.
 - Si quieres cambiarla, edita `lab/dvpe/configs/Dockerfile-Attacker-PC` y reemplaza `kali` por tu password en la línea `RUN mkdir -p ~/.vnc && x11vnc -storepasswd kali ~/.vnc/passwd`, luego rebuild: `docker compose build --no-cache attacker_pc && docker compose up -d --force-recreate attacker_pc`.

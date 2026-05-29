@@ -1,6 +1,6 @@
 ---
 name: cyberstrike-eino-demo
-description: Paquete de habilidades de ejemplo completo: SKILL.md + directorios opcionales como scripts/, references/, assets/; verifica la habilidad Eino y las rutas dentro del paquete HTTP (solo para pruebas de seguridad autorizadas y enseñanza).
+description: "Paquete de habilidades de ejemplo completo: SKILL.md + directorios opcionales como scripts/, references/, assets/; verifica la habilidad Eino y las rutas dentro del paquete HTTP (solo para pruebas de seguridad autorizadas y enseñanza)."
 ---
 
 # Demostración de habilidad completa CyberStrike × Eino

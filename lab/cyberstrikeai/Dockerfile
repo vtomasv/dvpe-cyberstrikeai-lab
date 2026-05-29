@@ -21,7 +21,7 @@ WORKDIR /src
 # CGO requerido por github.com/mattn/go-sqlite3, usado por internal/database.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-        git ca-certificates build-essential pkg-config libsqlite3-dev \
+        git ca-certificates build-essential pkg-config libsqlite3-dev python3 \
  && rm -rf /var/lib/apt/lists/*
 
 # git clone --depth 1 --branch puede fallar si el ref es un commit; en ese caso
@@ -30,6 +30,17 @@ RUN git clone --depth 1 --branch "${CYBERSTRIKEAI_REF}" "${CYBERSTRIKEAI_REPO}" 
  || git clone "${CYBERSTRIKEAI_REPO}" CyberStrikeAI
 
 WORKDIR /src/CyberStrikeAI
+
+# Lab overlay: expose Google Gemini in the settings UI and wire provider=gemini
+# through the existing OpenAI-compatible transport.
+COPY patches/add-gemini-provider.py /tmp/add-gemini-provider.py
+COPY patches/add-spanish-role-labels.py /tmp/add-spanish-role-labels.py
+COPY patches/improve-eino-toolcall-errors.py /tmp/improve-eino-toolcall-errors.py
+COPY patches/translate-hitl-ui.py /tmp/translate-hitl-ui.py
+RUN python3 /tmp/add-gemini-provider.py /src/CyberStrikeAI
+RUN python3 /tmp/add-spanish-role-labels.py /src/CyberStrikeAI
+RUN python3 /tmp/improve-eino-toolcall-errors.py /src/CyberStrikeAI
+RUN python3 /tmp/translate-hitl-ui.py /src/CyberStrikeAI
 
 # i18n: el upstream usa 'zh-CN' como DEFAULT_LANG y, salvo que el navegador
 # del alumno reporte 'en*', cae siempre en chino. Para el laboratorio dejamos
@@ -121,11 +132,15 @@ RUN set -eux; \
         echo '[info] enum4linux no disponible — se usa enum4linux-ng (pip) en su lugar'; \
     rm -rf /var/lib/apt/lists/*
 
-# Tools que no están en Debian o son más útiles vía PyPI. enum4linux-ng es el
-# reemplazo moderno de enum4linux; smbmap, dirsearch e impacket son
-# habituales en los módulos del laboratorio.
+# Tools que no están en Debian o son más útiles vía PyPI. smbmap, dirsearch,
+# impacket y ParamSpider son habituales en los módulos del laboratorio.
+# Mantenemos cada grupo separado: si un paquete opcional no existe para una
+# arch, no debe impedir que se instalen los demás.
 RUN pip3 install --no-cache-dir --break-system-packages \
-        enum4linux-ng smbmap dirsearch impacket || \
+        smbmap dirsearch impacket || \
+    echo '[warn] alguna tool Python no se instaló — se podrá ejecutar igual desde Attacker-PC'
+RUN pip3 install --no-cache-dir --break-system-packages \
+        git+https://github.com/devanshbatham/ParamSpider.git || \
     echo '[warn] alguna tool Python no se instaló — se podrá ejecutar igual desde Attacker-PC'
 
 WORKDIR /app

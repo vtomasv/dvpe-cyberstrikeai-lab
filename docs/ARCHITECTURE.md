@@ -60,9 +60,10 @@ network_f  192.168.100.0/24 (internal)
 |----------|----------|-------------|
 | `CYBERSTRIKEAI_REF` | build de `cyberstrikeai` | rama/tag a clonar del upstream |
 | `OLLAMA_HOST` / `OLLAMA_PORT` | `ollama-proxy` | endpoint del Ollama del host |
+| `CSAI_OPENAI_PROVIDER` | `cyberstrikeai` | proveedor LLM: `openai`/compatible, `gemini` o `claude` |
 | `CSAI_OPENAI_BASE_URL` | `cyberstrikeai` | API compatible-OpenAI usada por el agente |
-| `CSAI_OPENAI_API_KEY`  | `cyberstrikeai` | cualquier cadena (Ollama no valida) |
-| `CSAI_OPENAI_MODEL`    | `cyberstrikeai` | modelo Ollama que recibirá las consultas |
+| `CSAI_OPENAI_API_KEY`  | `cyberstrikeai` | API key del proveedor; cualquier cadena si es Ollama |
+| `CSAI_OPENAI_MODEL`    | `cyberstrikeai` | modelo que recibirá las consultas |
 | `DVPE_TOOLKIT_URL` | builds DVPE | mirror alternativo del toolkit binario |
 
 ## Flujo end-to-end del módulo IA
@@ -74,6 +75,8 @@ Alumno → http://localhost:8090 (web)
        → socat → host.docker.internal:11434
        → Ollama en el host → modelo seleccionado
 ```
+
+Para Gemini, `cyberstrikeai` conserva el mismo cliente OpenAI-compatible y cambia el destino a `https://generativelanguage.googleapis.com/v1beta/openai`.
 
 CyberStrikeAI conserva HITL: las herramientas ofensivas requieren aprobación humana explícita, mientras que las lecturas (read_file/list_dir/glob/grep) están en el whitelist.
 
