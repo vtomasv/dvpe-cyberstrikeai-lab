@@ -8,10 +8,20 @@ from pathlib import Path
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
+    # Idempotente: si el cambio ya esta aplicado, no hacemos nada.
     if new in text:
         return text
+    # Tolerante a drift del upstream: si el marcador ya no existe (porque la
+    # version clonada de CyberStrikeAI cambio ese codigo), avisamos por stderr
+    # y seguimos sin abortar el build. Esto solo omite un ajuste de UX/copy
+    # puntual; el laboratorio sigue funcionando.
     if old not in text:
-        raise SystemExit(f"patch failed: marker not found for {label}")
+        print(
+            f"[patch][warn] marcador no encontrado para '{label}' "
+            f"(probable cambio de version del upstream); se omite este ajuste.",
+            file=sys.stderr,
+        )
+        return text
     return text.replace(old, new, 1)
 
 

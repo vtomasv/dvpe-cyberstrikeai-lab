@@ -13,9 +13,17 @@
 FROM golang:1.24-bookworm AS builder
 
 ARG CYBERSTRIKEAI_REPO=https://github.com/Ed1s0nZ/CyberStrikeAI.git
-# Tag por defecto fijado para reproducibilidad. Para usar la rama main:
+# Tag por defecto fijado para reproducibilidad. Los parches de patches/*.py se
+# escribieron y validaron contra ESTE tag (v1.6.13 == commit
+# 1ba5e57ec6ba58f4344adfcdb61d90070efd9261). Construir con otro ref (p. ej.
+# `main`) puede mover el codigo del upstream y dejar marcadores sin matchear;
+# en ese caso los parches NO abortan el build (ahora son tolerantes) pero
+# algunos ajustes de UX/copy podrian no aplicarse.
 #   docker compose build --build-arg CYBERSTRIKEAI_REF=main cyberstrikeai
 ARG CYBERSTRIKEAI_REF=v1.6.13
+# Commit exacto correspondiente a v1.6.13; sirve de ancla si el tag fuese
+# eliminado o reescrito aguas arriba.
+ARG CYBERSTRIKEAI_PINNED_COMMIT=1ba5e57ec6ba58f4344adfcdb61d90070efd9261
 
 WORKDIR /src
 # CGO requerido por github.com/mattn/go-sqlite3, usado por internal/database.
@@ -24,10 +32,14 @@ RUN apt-get update \
         git ca-certificates build-essential pkg-config libsqlite3-dev python3 \
  && rm -rf /var/lib/apt/lists/*
 
-# git clone --depth 1 --branch puede fallar si el ref es un commit; en ese caso
-# hacemos un clone completo.
+# Estrategia de clone robusta:
+#  1) intento shallow por tag/branch indicado en CYBERSTRIKEAI_REF;
+#  2) si falla (ref es un commit, tag movido, etc.), clone completo y checkout
+#     del commit pinneado para garantizar reproducibilidad.
 RUN git clone --depth 1 --branch "${CYBERSTRIKEAI_REF}" "${CYBERSTRIKEAI_REPO}" CyberStrikeAI \
- || git clone "${CYBERSTRIKEAI_REPO}" CyberStrikeAI
+ || ( git clone "${CYBERSTRIKEAI_REPO}" CyberStrikeAI \
+   && git -C CyberStrikeAI checkout "${CYBERSTRIKEAI_PINNED_COMMIT}" ) ; \
+ echo "[build] CyberStrikeAI en commit: $(git -C CyberStrikeAI rev-parse HEAD)"
 
 WORKDIR /src/CyberStrikeAI
 
