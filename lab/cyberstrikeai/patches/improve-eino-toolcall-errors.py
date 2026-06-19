@@ -193,64 +193,6 @@ function chatAgentModeCompatibilityMessage() {
     path.write_text(text, encoding="utf-8")
 
 
-def patch_reasoning_effort_max(root: Path) -> None:
-    """Evita el 400 'reasoning_effort does not support max' degradando 'max' a 'high'.
-
-    Algunos endpoints OpenAI-compatible (Gemini via capa OpenAI, gateways, etc.)
-    solo aceptan none/low/medium/high/xhigh para reasoning_effort y rechazan
-    'max' con HTTP 400. El config.yaml del upstream trae effort: max por
-    defecto, asi que si el binario llega a leerlo (mode auto/on) se dispara el
-    error en el nodo Eino [node_1, ChatModel]. Este parche degrada 'max' a
-    'high' en internal/reasoning/eino.go, que es un valor universalmente
-    aceptado, sin tocar el resto de la logica de razonamiento.
-    """
-    path = root / "internal/reasoning/eino.go"
-    text = path.read_text(encoding="utf-8")
-
-    # Rama applyOpenAICompat: 'max' generaba ExtraFields["reasoning_effort"]="max".
-    text = replace_once(
-        text,
-        '	if e == "max" {\n'
-        '		if cfg.ExtraFields == nil {\n'
-        '			cfg.ExtraFields = make(map[string]any)\n'
-        '		}\n'
-        '		cfg.ExtraFields["reasoning_effort"] = "max"\n'
-        '		return\n'
-        '	}\n',
-        '	if e == "max" {\n'
-        '		// Lab fix: muchos endpoints OpenAI-compatible rechazan "max" (400).\n'
-        '		// Degradamos a "high", que es un valor universalmente aceptado.\n'
-        '		cfg.ReasoningEffort = einoopenai.ReasoningEffortLevelHigh\n'
-        '		return\n'
-        '	}\n',
-        "openai_compat reasoning_effort max -> high",
-    )
-
-    # Rama applyDeepseek: reasoning_effort se pasa via effortStringForAPI(effort);
-    # forzamos que 'max' baje a 'high' antes de serializar.
-    text = replace_once(
-        text,
-        'func effortStringForAPI(e string) string {\n'
-        '	// Gateways expect lowercase strings; "max" kept as max.\n'
-        '	return strings.ToLower(strings.TrimSpace(e))\n'
-        '}\n',
-        'func effortStringForAPI(e string) string {\n'
-        '	// Lab fix: "max" no es aceptado por varios endpoints OpenAI-compatible\n'
-        '	// (solo none/low/medium/high/xhigh); lo degradamos a "high".\n'
-        '	norm := strings.ToLower(strings.TrimSpace(e))\n'
-        '	if norm == "max" {\n'
-        '		norm = "high"\n'
-        '	}\n'
-        '	return norm\n'
-        '}\n',
-        "effortStringForAPI max -> high",
-    )
-
-    # Rama applyOutputConfigEffort tambien usa effortStringForAPI, asi que ya
-    # queda cubierta por el cambio anterior.
-    path.write_text(text, encoding="utf-8")
-
-
 def patch_webshell_ui(root: Path) -> None:
     path = root / "web/static/js/webshell.js"
     text = path.read_text(encoding="utf-8")
@@ -279,7 +221,6 @@ def main() -> None:
     patch_multi_agent_handler(root)
     patch_chat_ui(root)
     patch_webshell_ui(root)
-    patch_reasoning_effort_max(root)
 
 
 if __name__ == "__main__":
