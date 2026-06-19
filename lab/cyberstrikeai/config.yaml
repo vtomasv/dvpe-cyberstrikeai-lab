@@ -45,7 +45,10 @@ openai:
     # [node_1, ChatModel] cuando el LLM (Ollama/Gemini/OpenAI-compatible) no
     # soporta esos campos de razonamiento extendido (propios de Claude/DeepSeek).
     mode: off
-    effort: medium
+    # effort: high => si en el futuro se reactiva el razonamiento (mode auto/on),
+    # NUNCA enviar 'max' (rechazado por el endpoint: solo none/low/medium/high/xhigh).
+    # Con mode: off este valor no se envia; queda fijado como red de seguridad.
+    effort: high
     # allow_client_reasoning: false => el servidor IGNORA el campo `reasoning`
     # que el frontend pueda mandar en el cuerpo de la peticion. Sin esto, la UI
     # podria reactivar el razonamiento (mode=auto/on) y volver a disparar el
